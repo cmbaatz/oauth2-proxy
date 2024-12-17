@@ -5,7 +5,7 @@ title: Installation
 
 1.  Choose how to deploy:
 
-    a. Using a [Prebuilt Binary](https://github.com/oauth2-proxy/oauth2-proxy/releases) (current release is `v7.6.0`)
+    a. Using a [Prebuilt Binary](https://github.com/oauth2-proxy/oauth2-proxy/releases) (current release is `v7.7.1`)
 
     b. Using Go to install the latest release
     ```bash
@@ -29,3 +29,4 @@ title: Installation
 2.  [Select a Provider and Register an OAuth Application with a Provider](configuration/providers/index.md)
 3.  [Configure OAuth2 Proxy using config file, command line options, or environment variables](configuration/overview.md)
 4.  [Configure SSL or Deploy behind an SSL endpoint](configuration/tls.md) (example provided for Nginx)
+5.  [Configure OAuth2 Proxy using systemd.socket](configuration/systemd_socket.md) (example provided for Nginx/Systemd)
