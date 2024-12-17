@@ -276,26 +276,21 @@ func (s *storedSessionLoader) forceRefreshSession(next http.Handler) http.Handle
 			return
 		}
 
-		session := s.loadSessionForRefresh(rw, req)
+		session, err := s.store.Load(req)
+		if err != nil {
+			s.handleRefreshError(rw, req, next, err)
+			return
+		}
 
 		if session == nil {
 			next.ServeHTTP(rw, req)
 			return
 		}
 
-		err := s.refreshSessionIfNeeded(rw, req, session, true)
-
+		err = s.refreshSessionIfNeeded(rw, req, session, true)
 		if err != nil {
-			session = nil
-			if !errors.Is(err, http.ErrNoCookie) {
-				// In the case when there was an error refreshing the session,
-				// we should clear the session
-				logger.Errorf("Error refreshing cookied session: %v, removing session", err)
-				err = s.store.Clear(rw, req)
-				if err != nil {
-					logger.Errorf("Error removing session: %v", err)
-				}
-			}
+			s.handleRefreshError(rw, req, next, err)
+			return
 		}
 
 		// Add the session to the scope if it was found
@@ -304,21 +299,21 @@ func (s *storedSessionLoader) forceRefreshSession(next http.Handler) http.Handle
 	})
 }
 
-// Fetch the session for the session store
-// Handling errors if they occur, which would result in a nil session
-func (s *storedSessionLoader) loadSessionForRefresh(rw http.ResponseWriter, req *http.Request) *sessionsapi.SessionState {
-	session, err := s.store.Load(req)
-	if err != nil {
-		if !errors.Is(err, http.ErrNoCookie) {
-			session = nil
-			// In the case when there was an error loading the session,
-			// we should clear the session
-			logger.Errorf("Error loading cookied session: %v, removing session", err)
-			err = s.store.Clear(rw, req)
-			if err != nil {
-				logger.Errorf("Error removing session: %v", err)
-			}
+func (s *storedSessionLoader) handleRefreshError(rw http.ResponseWriter, req *http.Request, next http.Handler, err error) {
+	if errors.Is(err, http.ErrNoCookie) {
+		logger.Error("Error refreshing session: session cookie not present")
+
+	} else {
+		// In the case when there was an error loading the session,
+		// we should clear the session
+		logger.Errorf("Error loading cookied session: %v, removing session", err)
+
+		if err = s.store.Clear(rw, req); err != nil {
+			logger.Errorf("Error removing session: %v", err)
 		}
 	}
-	return session
+
+	scope := middlewareapi.GetRequestScope(req)
+	scope.Session = nil
+	next.ServeHTTP(rw, req)
 }
